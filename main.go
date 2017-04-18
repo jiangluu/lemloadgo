@@ -4,40 +4,14 @@ import (
 	"fmt"
 	"net"
 	//"bytes"
+	"flag"
 	"strings"
 	"time"
 )
 
-const (
-	s_port    = ":22222"
-	timeout1  = 1
-	times     = 100000
-	concurent = 32
+var (
+	s_port string
 )
-
-func sum(arrays []int, ch chan int) {
-	//fmt.Println(arrays)
-	sum := 0
-	for _, array := range arrays {
-		sum += array
-	}
-	ch <- sum
-}
-
-func main22() {
-	arrayChan := make(chan int, 20)
-	arrayInt := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	for t := 0; t < 10; t++ {
-		length := len(arrayInt)
-		go sum(arrayInt[length-t:], arrayChan)
-	}
-
-	arrayResult := [10]int{0}
-	for i := 0; i < 10; i++ {
-		arrayResult[i] = <-arrayChan
-	}
-	fmt.Println(arrayResult)
-}
 
 func run_a_c(local_c int, ch chan int) {
 	result := -1
@@ -76,10 +50,20 @@ func main() {
 	count_send := 0
 	count1_recv_ok := 0
 
-	// start enough coroutines first
-	a_chan := make(chan int, concurent)
+	concurent := flag.Int("c", 32, "concurent connections")
+	times := flag.Int("n", 10000, "number of tasks")
+	pp := flag.String("p", ":22222", "host and port")
 
-	for i := 0; i < concurent; i++ {
+	flag.Parse()
+
+	s_port = *pp
+
+	// start enough coroutines first
+	a_chan := make(chan int, *concurent)
+
+	time1 := time.Now()
+
+	for i := 0; i < *concurent; i++ {
 		count1 += 1
 		go run_a_c(count1, a_chan)
 	}
@@ -98,16 +82,21 @@ func main() {
 
 		if 0 == count1%100 {
 			fmt.Println(count1, count_send, count1_recv_ok)
+			time2 := time.Now()
+			fmt.Println("Time used:", time2.Sub(time1).String())
 		}
 
-		if count1 < times {
+		if count1 < *times {
 			count1++
 			go run_a_c(count1, a_chan)
 		} else {
 			if count_returned < count1 {
-				time.Sleep(time.Second)
+				// time.Sleep(time.Second)
 			} else {
+				// Over HERE
+				time2 := time.Now()
 				fmt.Println(count1, count_send, count1_recv_ok)
+				fmt.Println("Time used:", time2.Sub(time1).String())
 				break
 			}
 		}
