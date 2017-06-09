@@ -5,6 +5,7 @@ import (
 	"net"
 	//"bytes"
 	"flag"
+	//"runtime"
 	"strings"
 	"time"
 )
@@ -16,6 +17,7 @@ var (
 func run_a_c(local_c int, ch chan int) {
 	result := -1
 	defer func() {
+		//fmt.Println("defer", result)
 		ch <- result
 	}()
 
@@ -36,10 +38,50 @@ func run_a_c(local_c int, ch chan int) {
 		if ll > 0 {
 			aa := fmt.Sprintf("LEM helloACK 3\r\n%09dACK", local_c)
 			buf = buf[:ll]
+
 			if 0 == strings.Compare(aa, string(buf)) {
 				result = 0
+			} else {
+				fmt.Println(string(buf))
+				fmt.Println(aa)
 			}
 		}
+
+	}
+}
+
+func run_a_c_2(local_c int, ch chan int) {
+	result := -1
+	defer func() {
+		ch <- result
+	}()
+
+	c, err := net.Dial("tcp", s_port)
+	if err != nil {
+		result = 1
+	} else {
+		defer c.Close()
+
+		s := fmt.Sprintf("LEM hello 9 CUSTOM\r\n%09d", local_c)
+		//should_re := fmt.Sprintf("LEM helloACK 3\r\n%09dACK", local_c)
+		count := 0
+		buf := make([]byte, 256)
+		const N = 100
+
+		for i := 0; i < N; i++ {
+			c.Write([]byte(s))
+			result = 2
+
+			ll, _ := c.Read(buf)
+
+			if ll > 0 {
+				count++
+			}
+		}
+		if count == N {
+			result = 0
+		}
+
 	}
 }
 
@@ -65,7 +107,7 @@ func main() {
 
 	for i := 0; i < *concurent; i++ {
 		count1 += 1
-		go run_a_c(count1, a_chan)
+		go run_a_c_2(count1, a_chan)
 	}
 
 	// if some coroutine returned, make one
@@ -88,7 +130,7 @@ func main() {
 
 		if count1 < *times {
 			count1++
-			go run_a_c(count1, a_chan)
+			go run_a_c_2(count1, a_chan)
 		} else {
 			if count_returned < count1 {
 				// time.Sleep(time.Second)
